@@ -34,8 +34,8 @@ async function graphQLHandler(req, res, schema){
 function Nala(schema,uri){
   //TODO: eventually parse uri for different dbs
   var sequelize = new Sequelize(uri);
-  var QUERY_FIELDS = schema._schemaConfig.query._fields;
-  var MUTATION_FIELDS = schema._schemaConfig.mutation._fields;
+  var QUERY_FIELDS = schema._queryType._fields;
+  var MUTATION_FIELDS = schema._mutationType._fields
 
   //extract user defined GraphQL schemas that we want to convert into sequelize schemas
   //we filter out the non-user defined ones by comparing them to defaultNames
@@ -124,6 +124,8 @@ function convertSchema(modelNames, typeMap){
       //     model._fields[fields[j]].type.constructor === GraphQLObject)
       // OR (bring in ScalarType when ready to handle non list as well)
       // if (model._fields[fields[j]].type.constructor !== GraphQLScalarType)
+
+      // console.log(model._fields[fields[0]]);
       if (model._fields[fields[j]].type.constructor === GraphQLList) {
         relationsArray.push([model.name, model._fields[fields[j]]]);
         //console.log('relationsarray',relationsArray[0][1]); //gqllist obj (e.g. friends)
@@ -139,6 +141,8 @@ function convertSchema(modelNames, typeMap){
     }
     sequelizeArr.push([modelNames[i], sequelizeSchema]);
   }
+  // console.log(relationsArray);
+  // console.log(relationsArray[0][1].type.ofType._fields.friends);
   return sequelizeArr;
 }
 
@@ -157,7 +161,8 @@ function initSequelizeRelations(relations, typeMap, mutationFields){
     var relationTableName = relationName+'_table'; //friends_table
     // console.log('relationTableName',relationTableName);
 
-    //console.log(table1Name, table2Name, relationName, relationTableName);
+    // console.log(table1Name, table2Name, relationName, relationTableName);
+
     tables[table1Name].belongsToMany(tables[table2Name],{as : relationName, through: relationTableName});
 
     //relations getter
@@ -169,8 +174,8 @@ function initSequelizeRelations(relations, typeMap, mutationFields){
           })
     }
 
-    createRelationCreators(creatorName, relationName, tables, table1Name, table2Name, mutationFields, typeMap)
-    createRelationRemovers(destroyerName, relationName, tables, table1Name, table2Name, mutationFields, typeMap)
+    createRelationCreators(creatorName, relationName, tables, table1Name, table2Name, mutationFields, typeMap);
+    createRelationRemovers(destroyerName, relationName, tables, table1Name, table2Name, mutationFields, typeMap);
   }
 }
 

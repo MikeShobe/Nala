@@ -62,4 +62,5 @@ let schema = new GraphQLSchema({
    mutation : Mutation
 });
 
+// console.log(schema._queryType._fields);
 module.exports = schema;
