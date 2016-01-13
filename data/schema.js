@@ -57,10 +57,10 @@ let Mutation = new GraphQLObjectType({
   }
 });
 
+//schema contains query and mutation objects. fields are extracted at beginning of Nala function
 let schema = new GraphQLSchema({
    query : Query,
    mutation : Mutation
 });
 
-// console.log(schema._queryType._fields);
 module.exports = schema;

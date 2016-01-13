@@ -6,8 +6,8 @@ import createGetters from './lib/CreateGetters';
 import createAdders from './lib/CreateAdders';
 import createUpdaters from './lib/CreateUpdaters';
 import createDestroyers from './lib/CreateDestroyers';
-import createRelationCreators from './lib/RelationCreators';
-import createRelationRemovers from './lib/RelationRemovers';
+import createRelationCreators from './lib/createRelationCreators';
+import createRelationRemovers from './lib/createRelationRemovers';
 
 import util from 'util';
 
@@ -34,6 +34,8 @@ async function graphQLHandler(req, res, schema){
 function Nala(schema,uri){
   //TODO: eventually parse uri for different dbs
   var sequelize = new Sequelize(uri);
+
+  //create query_fields and mutation_fields from schema created in schema.js
   var QUERY_FIELDS = schema._queryType._fields;
   var MUTATION_FIELDS = schema._mutationType._fields
 
@@ -43,6 +45,7 @@ function Nala(schema,uri){
   var GraphQLModelNames = Object.keys(schema._typeMap).filter(function(elem) {
     return defaultNames.indexOf(elem) < 0 && (elem[0] !== '_' || elem[1] !== '_');
   });
+
   //GraphQLModelNames : ['String', 'user', 'Int' ...]
 
   //convert extracted schemas into sequelize schemas, returns pairs of names and sequelize schema objects
@@ -66,7 +69,8 @@ function Nala(schema,uri){
   //creates destroyer functions for each developer defined GraphQL Schema
   createDestroyers(GraphQLModelNames, schema._typeMap, MUTATION_FIELDS, tables);
 
-  //initialize sequelize relations TODO: currently works for belongsToMany
+  //initialize sequelize relations 
+  //TODO: currently works for belongsToMany
   initSequelizeRelations(relationsArray, schema._typeMap, MUTATION_FIELDS);
 
   for (var i = 0; i < relationsArray.length; i++){
@@ -78,14 +82,12 @@ function Nala(schema,uri){
       return tables[typeUpper].
         findOne({where: {name : root.name}})
           .then(function(user){
-              return user.getFriends();
+            return user.getFriends();
           })
     }
   }
   sequelize.sync();
 
-  //console.log(util.inspect(QUERY_FIELDS.getUser.args, {showHidden: false, depth :null} ));
-    //console.log('typemap',schema._typeMap);
   return function(req, res) {
     graphQLHandler(req, res, schema);
   }
@@ -99,7 +101,7 @@ function initSequelizeModels(sequelizeSchemas, sequelize){
     var modelName = sequelizeSchemas[i][0].charAt(0).toUpperCase()+sequelizeSchemas[i][0].slice(1);
     tables[modelName] = sequelize.define(sequelizeSchemas[i][0], sequelizeSchemas[i][1]);
   }
-  //should we automatically create queries in schema.js?
+  //NOTE:should we automatically create queries in schema.js?
   //eg getter, update, delete
 }
 
@@ -113,7 +115,7 @@ function convertSchema(modelNames, typeMap){
         sequelizeSchema = {},
         sequelizeFieldTypes = {String: Sequelize.STRING, Int: Sequelize.INTEGER};
 
-    //console.log(fields); //expect ['name','age','friends']
+    //expect ['name','age','friends']
     for(var j = 0; j < fields.length; j++) {
       //console.log(model._fields[fields[j]].type.name); //undefined for 'friends'
       //if model._fields[fields[j]].type.name is undefined, it is not scalar
@@ -125,11 +127,11 @@ function convertSchema(modelNames, typeMap){
       // OR (bring in ScalarType when ready to handle non list as well)
       // if (model._fields[fields[j]].type.constructor !== GraphQLScalarType)
 
-      // console.log(model._fields[fields[0]]);
+
       if (model._fields[fields[j]].type.constructor === GraphQLList) {
         relationsArray.push([model.name, model._fields[fields[j]]]);
-        //console.log('relationsarray',relationsArray[0][1]); //gqllist obj (e.g. friends)
-        //console.log('relationsarray',relationsArray[0][0]); //gqllist type (e.g. user)
+        //gqllist obj (e.g. friends)
+        //gqllist type (e.g. user)
 
       }
       else { // is ScalarType
@@ -141,8 +143,7 @@ function convertSchema(modelNames, typeMap){
     }
     sequelizeArr.push([modelNames[i], sequelizeSchema]);
   }
-  // console.log(relationsArray);
-  // console.log(relationsArray[0][1].type.ofType._fields.friends);
+
   return sequelizeArr;
 }
 
@@ -159,9 +160,6 @@ function initSequelizeRelations(relations, typeMap, mutationFields){
     var destroyerName = 'remove'+relationName.charAt(0).toUpperCase()+relationName.slice(1);//removeFriends
 
     var relationTableName = relationName+'_table'; //friends_table
-    // console.log('relationTableName',relationTableName);
-
-    // console.log(table1Name, table2Name, relationName, relationTableName);
 
     tables[table1Name].belongsToMany(tables[table2Name],{as : relationName, through: relationTableName});
 
@@ -170,7 +168,7 @@ function initSequelizeRelations(relations, typeMap, mutationFields){
       return tables[table1Name].
         findOne({where: {name : root.name}})
           .then(function(model){
-              return model[getterName]();
+            return model[getterName]();
           })
     }
 
